@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Game</title>
+    <style>
+        #game-container {
+            width: 1000px;
+            height: 500px;
+            border: 1px solid black;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .box {
+            width: 50px;
+            height: 50px;
+            background-color: blue;
+            position: absolute;
+        }
+
+        .bullet {
+            width: 25px;
+            height: 25px;
+            background-color: red;
+            position: absolute;
+        }
+
+        .obstacle {
+            width: 50px;
+            height: 50px;
+            background-color: green;
+            position: absolute;
+        }
+    </style>
+</head>
+<body>
+    <button id="start-button">Start Game</button>
+    <div id="game-container" tabindex="0"></div>
+
+    <script>
+        var startButton = document.getElementById("start-button");
+        var gameContainer = document.getElementById("game-container");
+        var box = null;
+
+        var gameStarted = false;
+        var shootingEnabled = false;
+
+        var bullets = [];
+        var obstacles = [];
+
+        function startGame() {
+            gameStarted = true;
+            startButton.disabled = true;
+
+            box = document.createElement("div");
+            box.className = "box";
+            gameContainer.appendChild(box);
+
+            shootingEnabled = true;
+            document.addEventListener("mousemove", moveBox);
+
+            setInterval(shootBullet, 500);
+            setInterval(createObstacle, 1500);
+        }
+
+        function moveBox(event) {
+            var mouseX = event.clientX;
+            var mouseY = event.clientY;
+
+            var containerRect = gameContainer.getBoundingClientRect();
+
+            var boxX = mouseX - containerRect.left - (box.offsetWidth / 2);
+            var boxY = mouseY - containerRect.top - (box.offsetHeight / 2);
+
+            var maxBoxX = gameContainer.offsetWidth - box.offsetWidth;
+            var maxBoxY = gameContainer.offsetHeight - box.offsetHeight;
+
+            // Stick to the edges when mouse is outside the container
+            if (mouseX < containerRect.left)
+                boxX = 0;
+            else if (mouseX > containerRect.right)
+                boxX = maxBoxX;
+
+            if (mouseY < containerRect.top)
+                boxY = 0;
+            else if (mouseY > containerRect.bottom)
+                boxY = maxBoxY;
+
+            box.style.left = boxX + "px";
+            box.style.top = boxY + "px";
+        }
+
+        function shootBullet() {
+            if (gameStarted && shootingEnabled) {
+                var bullet = document.createElement("div");
+                bullet.className = "bullet";
+                bullet.style.left = (box.offsetLeft + box.offsetWidth / 4) + "px";
+                bullet.style.top = (box.offsetTop - bullet.offsetHeight) + "px";
+                gameContainer.appendChild(bullet);
+
+                bullets.push(bullet);
+
+                moveBullet(bullet);
+            }
+        }
+
+        function moveBullet(bullet) {
+            var bulletInterval = setInterval(function() {
+                var bulletY = bullet.offsetTop;
+
+                if (bulletY <= 0) {
+                    clearInterval(bulletInterval);
+                    bullet.remove();
+                    bullets.splice(bullets.indexOf(bullet), 1);
+                } else {
+                    bulletY -= 5;
+                    bullet.style.top = bulletY + "px";
+
+                    // Check collision with obstacles
+                    for (var i = 0; i < obstacles.length; i++) {
+                        var obstacle = obstacles[i];
+                        if (checkCollision(bullet, obstacle)) {
+                            removeObstacle(obstacle);
+                            bullet.remove();
+                            bullets.splice(bullets.indexOf(bullet), 1);
+                            break;
+                        }
+                    }
+                }
+            }, 30);
+        }
+
+        function createObstacle() {
+            if (gameStarted) {
+                var obstacle = document.createElement("div");
+                obstacle.className = "obstacle";
+                obstacle.size = getRandomSize();
+                obstacle.style.width = obstacle.size + "px";
+                obstacle.style.height = obstacle.size + "px";
+                obstacle.style.left = getRandomPosition(gameContainer.offsetWidth - obstacle.size) + "px";
+                obstacle.style.top = -obstacle.size + "px";
+                gameContainer.appendChild(obstacle);
+
+                obstacles.push(obstacle);
+
+                moveObstacle(obstacle);
+            }
+        }
+
+        function moveObstacle(obstacle) {
+            var speed = obstacle.size <= 40 ? 2 : 1; // Adjust the speed based on obstacle size
+
+            obstacle.interval = setInterval(function() {
+                var obstacleY = obstacle.offsetTop;
+                var containerHeight = gameContainer.offsetHeight;
+
+                if (obstacleY >= containerHeight) {
+                    clearInterval(obstacle.interval);
+                    obstacle.remove();
+                    obstacles.splice(obstacles.indexOf(obstacle), 1);
+                } else {
+                    obstacleY += speed;
+                    obstacle.style.top = obstacleY + "px";
+
+                if (obstacleY >= containerHeight) {
+                    return endGame();
+                }
+                    if (checkCollision(obstacle, box)) {
+                        clearInterval(obstacle.interval);
+                        obstacle.remove();
+                        obstacles.splice(obstacles.indexOf(obstacle), 1);
+                    }
+                }
+            }, 10);
+        }
+
+        function checkCollision(object1, object2) {
+            var rect1 = object1.getBoundingClientRect();
+            var rect2 = object2.getBoundingClientRect();
+
+            return (
+                rect1.top < rect2.bottom &&
+                rect1.bottom > rect2.top &&
+                rect1.left < rect2.right &&
+                rect1.right > rect2.left
+            );
+        }
+
+        function removeObstacle(obstacle) {
+            clearInterval(obstacle.interval);
+            obstacle.remove();
+            obstacles.splice(obstacles.indexOf(obstacle), 1);
+        }
+
+        function getRandomSize() {
+            // Generate a random size between 20 and 80
+            return Math.floor(Math.random() * 61) + 20;
+        }
+
+        function getRandomPosition(max) {
+            // Generate a random position between 0 and max
+            return Math.floor(Math.random() * (max + 1));
+        }
+
+        function endGame() {
+            alert("Game over!");
+            return;
+        }
+
+        startButton.addEventListener("click", startGame);
+    </script>
+</body>
+</html>
